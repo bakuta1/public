@@ -1,0 +1,155 @@
+h1 {
+  color: gray;
+  position: absolute;
+  top: -27px;
+}
+
+body {
+  background-image: url("photos/background.jpeg");
+  background-repeat: no-repeat;
+  background-size: cover;
+  -webkit-text-size-adjust: 100%;
+  font-family: "メイリオ", "Meiryo", sans-serif;
+}
+
+#chatlog {
+  width: 100%;
+  border: 1px gray;
+  position: absolute;
+  inset: 0px;
+  overflow: scroll;
+  margin-top: 100px;
+  margin-bottom: 55px;
+}
+#outline {
+  width: 100%;
+  position: absolute;
+  overflow: hidden;
+  height: calc((100% - 40px) - 55px);
+  top: 45px;
+}
+#pleaselogin {
+  width: 100%;
+  border: 1px solid gray;
+  padding: 10px;
+  margin-bottom: 20px;
+  background-color: lightgrey;
+  position: absolute;
+  bottom: 0;
+  font-size: 40px;
+}
+#uname {
+  display: none;
+  position: absolute;
+  bottom: 0;
+}
+#footer {
+  width: 100%;
+  position: absolute;
+  bottom: 10px;
+  float: left;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+#msg {
+  width: 65%;
+  height: 70px;
+  background-color: cornsilk;
+  font-size: 45px;
+}
+#sbmt {
+  width: 20%;
+  height: 90px;
+  font-size: 45px;
+  cursor: pointer;
+}
+.hide {
+  display: none;
+}
+ul {
+  list-style-type: none;
+}
+
+label {
+  padding: 0 30px;
+  color: blue;
+  font-size: 50px;
+  cursor: pointer;
+}
+
+input[type="file"] {
+  display: none;
+}
+
+.chatlog-item {
+  pointer-events: none;
+  width: 400px;
+  background-color: rgba(255, 255, 255, 0.8);
+  cursor: default;
+  padding-left: 10px;
+  font-size: 20px;
+  color: gray;
+  border-radius: 15px;
+  border: 1px solid #c0c0c0;
+}
+.chatlog-item2 {
+  pointer-events: auto;
+  font-size: 35px;
+  color: black;
+  white-space: pre-wrap;
+}
+.chatlog-item-mine {
+  pointer-events: none;
+  width: 400px;
+  background-color: rgba(193, 66, 66, 0.1);
+  cursor: pointer;
+  padding-left: 10px;
+  font-size: 20px;
+  color: gray;
+  border-radius: 15px;
+  border: 1px solid #c0c0c0;
+}
+.chatlog-item-mine2 {
+  pointer-events: auto;
+  font-size: 35px;
+  color: black;
+  white-space: pre-wrap;
+}
+
+.chatlog-item3 {
+  width: 500px;
+  height: auto;
+  pointer-events: auto;
+}
+
+.chatlog-item-mine3 {
+  width: 500px;
+  height: auto;
+  pointer-events: auto;
+}
+.chatlog-itemM {
+  width: 600px;
+  height: auto;
+  pointer-events: auto;
+}
+
+.chatlog-item-mineM {
+  width: 600px;
+  height: auto;
+  pointer-events: auto;
+}
+
+#previewDiv {
+  position: absolute;
+  right: 70px;
+  bottom: 150px;
+}
+
+.delete-button {
+  display: inline-block;
+  margin-left: 200px;
+  padding: 0 30px;
+  font-size: 20px;
+}

@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Chat</title>
+  <link rel="stylesheet" type="text/css" href="style.css">
+  <link rel= "icon" type= "/photos/favicon.ico">
+  
+</head>
+<body>
+  <h1>Bakooo-Chat</h1>
+
+  <!-- 発言が表示される領域 -->
+  <div id="outline"><ul id="chatlog"></ul></div>
+  <!-- 入力フォーム -->
+  <div id="pleaselogin">
+    ※チャットへの書き込みは<a href="./login.html">ログイン</a>が必要です。
+  </div>
+  <form id="form1" class="hide">
+    <div id="uname"></div>
+    <div id="footer"><textarea type="text" id="msg" rows="1" cols="14"></textarea>
+    <label><input type="file" name="" id="fileButton" onchange="previewImage(this);"/>:</label>
+    <button type="button" id="sbmt">送信</button></div>
+  </form>
+  <div id="previewDiv"><img id="preview" src="" style="max-height:300px;max-width:500px"></div>
+  <script src="https://www.gstatic.com/firebasejs/5.8.1/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/5.8.1/firebase-auth.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/5.8.1/firebase-firestore.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/5.8.1/firebase-storage.js"></script>
+  <script src="./config.js"></script>
+  <script>
+    /**
+     * Chatオブジェクト
+     **/
+        // プレビュー表示
+      function previewImage(obj){
+        var getPhoto = document.getElementById("fileButton").files[0];
+        if (getPhoto ==""){
+          document.getElementById('preview').src = "";
+        } else{
+          var fileReader = new FileReader();
+          fileReader.onload = (function() {
+            document.getElementById('preview').src = fileReader.result;
+          });fileReader.readAsDataURL(obj.files[0]);
+          //送信をクリックしたらプレビューを消す
+          document.getElementById("sbmt").addEventListener("click", ()=>{
+            document.getElementById('preview').src = "";
+          })
+          }
+        }
+
+    var Chat = {
+      //----------------------------------------
+      // プロパティ
+      //----------------------------------------
+      user: {
+        uid: null,
+        name: null,
+        img: null
+      },
+      db: null,
+      messagesRef: null,
+      
+      //----------------------------------------
+      // メソッド
+      //----------------------------------------
+      /**
+       * 初期処理
+       **/
+      init: () => {
+        this.db = firebase.firestore();
+        this.messagesRef = this.db.collection("chatroom").doc("room3").collection("messages");
+
+        //---------------------
+        // 同期処理 元はasc、descに変更
+        //---------------------
+        this.messagesRef.orderBy("date", "desc").limit(70).onSnapshot( (snapshot) => {
+          snapshot.docChanges().reverse().forEach((change) => {
+            // 追加
+            if ( change.type === 'added' ) {
+              Chat.addLog(change.doc.id, change.doc.data());
+            }
+            // 更新
+            else if( change.type === 'modified' ){
+              Chat.modLog(change.doc.id, change.doc.data());
+            }
+            // 削除
+            else if ( change.type === 'removed' ) {
+              Chat.removeLog(change.doc.id);
+            }
+          });
+        });
+
+        //---------------------
+        // 送信ボタン
+        //---------------------
+        document.getElementById("sbmt").addEventListener("click", ()=>{
+          let msg = document.getElementById("msg").value;
+          if( msg.length !== 0 ){
+            Chat.sendLogCreate(msg);
+          }
+          function previewImage(obj){
+            var fileReader = new FileReader();
+            fileReader.onload = (function() {
+              document.getElementById('preview').src = "";
+            });
+          }
+        });
+        // submitイベントは（いったん）無視する
+        document.getElementById("form1").addEventListener("submit", (e)=>{
+          e.preventDefault();
+        });
+      },
+
+      /**
+       * [Firestoreへ送信] ログを追加
+       *
+       * @param {string} str メッセージ
+       **/
+      sendLogCreate: (str)=>{
+        //画像のアップロード
+        //ファイルの取得
+        var getPhoto = document.getElementById("fileButton").files[0];
+        if(getPhoto !==undefined){
+          //ファイルの参照
+          var storageRef = firebase.storage().ref();
+          //ファイルのメタデータ
+          var metadata = {contentType: "image/*",};
+          //画像ファイルのアップロード
+          storageRef.child("image/" + getPhoto.name).put(getPhoto, metadata).then(function(snapshot) {
+            console.log('Upload was done')
+          }); 
+          //画像URLを取得する
+          imgUrl = 'https://storage.googleapis.com/bakooo-chat.appspot.com/image/'+ getPhoto.name
+        } else {
+          imgUrl= 0;
+        }
+        this.messagesRef.add({
+          name: Chat.user.name,
+          msg: str,
+          date: new Date().getTime(),
+          uid: Chat.user.uid,
+          img: imgUrl
+        })
+        .then(()=>{
+        let msg = document.getElementById("msg");
+        msg.focus();
+        msg.value = "";
+        })
+        .catch((error) => {
+         console.log(`追加に失敗しました (${error})`);
+        })
+        document.getElementById("fileButton").value = ''
+        
+      },
+
+      /**
+       * [Firestoreへ送信] ログを削除
+       *
+       * @param {string} id
+       **/
+       sendLogRemove: (id)=>{
+        this.messagesRef.doc(id).delete()
+        .then(()=>{
+          console.log(`削除しました (${id})`);
+        })
+        .catch((error) => {
+          console.log(`削除に失敗しました (${error})`);
+        });
+      },
+
+      /**
+       * 描画エリアにログを追加
+       *
+       * @param {string} id
+       * @param {object} data
+       **/
+       addLog: (id, data)=>{
+        // 追加するHTMLを作成
+        let log = `${getStrTime(data.date)}`;
+        let li  = document.createElement('li');
+        li.id   = id;                                 // id属性を作成
+        li.dataset.uid = data.uid;                    // data-uid属性を作成
+        li.classList.add( (data.uid===Chat.user.uid)? "chatlog-item-mine":"chatlog-item");
+        li.appendChild(document.createTextNode(log));
+
+        let de = document.createElement('div');       //削除ボタン
+        de.id = "idDe";
+        de.appendChild(document.createTextNode(""));
+        de.classList.add('delete-button')
+        li.appendChild(de)
+
+        let log2 = `${data.name}: ${data.msg}`;
+        let div  = document.createElement('div');
+        div.id   = id;                                 // id属性を作成
+        div.dataset.uid = data.uid;                    // data-uid属性を作成
+        div.classList.add( (data.uid===Chat.user.uid)? "chatlog-item-mine2":"chatlog-item2");
+        div.appendChild(document.createTextNode(log2));
+        li.appendChild(div)
+
+        // 文字列にURLがあったらaタグで表示する
+        var str = `${data.msg}`;
+        var regexp_url = /((h?)(ttps?:\/\/[a-zA-Z0-9.\-_@:/~?%&;=+#',()*!]+))/g; // ']))/;正規表現（/〜/）を解釈してくれないエディタ等で自動整形を崩さないため。
+        var regexp_makeLink = function(all, url, h, href) {
+        return '<a href="h' + href + '" style="display:block; word-break: break-all;" target="_blank">' + url + '</a>';
+        }
+        var textWithLink = str.replace(regexp_url, regexp_makeLink);
+        div.innerHTML = textWithLink
+
+        //動画or画像用のタグを生成
+        let wait = 2000
+        let log3 = `${data.img}`;
+        fileType = log3.toLowerCase().split(".").pop()
+        console.log(fileType);
+        if(fileType == "mov" || fileType == "mp4"){
+          let wait = 5000;
+        } else {
+          let wait = 2000;
+        };        
+        setTimeout(function(){
+          let log3 = `${data.img}`;
+          fileType = log3.toLowerCase().split(".").pop()
+          if(fileType == "mov" || fileType == "mp4"){
+            let mvtag  = document.createElement('video');
+            mvtag.setAttribute('playsinline', '');
+            mvtag.muted = "muted";
+            mvtag.autoplay = true;
+            mvtag.setAttribute('controls',"");
+            mvtag.id   = id;                                 // id属性を作成
+            mvtag.dataset.uid = data.uid;                    // data-uid属性を作成
+            mvtag.classList.add( (data.uid===Chat.user.uid)? "chatlog-item-mineM":"chatlog-itemM");
+            mvtag.src = log3
+            li.appendChild(mvtag)
+            chatlog.scrollTop = chatlog.scrollHeight
+          } else if(log3 !=="0"){
+            let imgtag  = document.createElement('img');
+            imgtag.id   = id;                                 // id属性を作成
+            imgtag.dataset.uid = data.uid;                    // data-uid属性を作成
+            imgtag.classList.add( (data.uid===Chat.user.uid)? "chatlog-item-mine3":"chatlog-item3");
+            imgtag.src = log3
+            li.appendChild(imgtag)
+            chatlog.scrollTop = chatlog.scrollHeight
+          } else {
+            ;
+          };
+        },wait)
+
+        // 表示エリアへ追加
+        let chatlog = document.getElementById("chatlog");
+        chatlog.insertBefore(li, chatlog.nextSibling); //元はchatlog.firstChild
+
+        //ページ更新時に一番下までスクロール
+        chatlog.scrollTop = chatlog.scrollHeight;
+        setTimeout(function(){
+          chatlog.scrollTop = chatlog.scrollHeight;
+        },5500);
+
+        // 削除機能をセット
+        document.getElementById(id).addEventListener("click", (e)=>{
+          let uid = e.target.dataset.uid;       //e.target.dataset.uid;
+          let id  = e.target.id;                //e.target.id;
+
+          if( uid === Chat.user.uid && confirm("削除しますか？") ){
+            Chat.sendLogRemove(id);
+          }
+        });
+        
+      },
+
+      /**
+       * 描画エリアのログを変更
+       *
+       * @param {string} id
+       * @param {object} data
+       **/
+       modLog: (id, data)=>{
+        let log = document.getElementById(id);
+        if( log !== null ){
+          log.innerText = `${data.name}: ${data.msg} (${getStrTime(data.date)})`;
+        }
+      },
+
+      /**
+       * 描画エリアのログを削除
+       *
+       * @param {string} id
+       **/
+       removeLog: (id)=>{
+        let log = document.getElementById(id);
+        if( log !== null ){
+          log.parentNode.removeChild(log);
+        }
+      }
+    };  // Chat
+
+
+    /**
+     * 描画エリアのログを変更
+     *
+     * @param {string} id
+     * @param {object} data
+     **/
+    firebase.auth().onAuthStateChanged( (user) => {
+      // ログイン状態なら書き込みフォームを開放
+      if( user !== null ){
+        //隠す
+        document.getElementById("pleaselogin").classList.add("hide");
+
+        //表示
+        document.getElementById("chatlog").classList.remove("hide");
+        document.getElementById("form1").classList.remove("hide");
+
+        // ユーザー情報を確保
+        Chat.user.uid  = user.uid;
+        Chat.user.name = user.displayName;
+        document.getElementById("uname").innerText = Chat.user.name;
+      }
+
+      // Firestore処理開始
+      Chat.init();
+    });
+
+    /**
+     * UNIX TIME => MM-DD hh:mm
+     **/
+     function getStrTime(time){
+      let t = new Date(time);
+      return(
+        ("0" + (t.getMonth() + 1)).slice(-2) + "-" +
+        ("0" + t.getDate()       ).slice(-2) + " " +
+        ("0" + t.getHours()      ).slice(-2) + ":" +
+        ("0" + t.getMinutes()    ).slice(-2)
+      );
+    }
+  </script>
+</body>
+</html>
